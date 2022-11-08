@@ -6,7 +6,7 @@
 // @author       Saraph1nes
 // @match        http://*/*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
-// @run-at       document-start
+// @run-at       document-end
 // @grant        unsafeWindow
 // @grant        GM_info
 // @grant        GM_addStyle
@@ -18,6 +18,7 @@
 // @require      https://code.jquery.com/jquery-3.6.1.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.3.2/math.js
 // @require      https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js
+// @require      https://cdn.bootcdn.net/ajax/libs/moment.js/2.29.4/moment.min.js
 // ==/UserScript==
 
 //监听ajax请求
@@ -127,15 +128,16 @@ const marketPageHandler = async (data) => {
  */
 const getPageListByName = async (name) => {
   const goodsClassifyList = [];
-  // console.log($('thead tr th').eq(3)[0].innerText)
   $('thead tr th').eq(3)[0].innerText = '购入价格'
   $('thead tr th').eq(3).after('<th class="t_Left" width="150">最高求购价</th>')
   $('thead tr th').eq(3).after('<th class="t_Left" width="150">当前售价卖出所得</th>')
+  $('thead tr th').eq(3).after('<th class="t_Left" width="100">可出售</th>')
 
   const orderList = $('.list_tb_csgo');
   const orderListTr = orderList.find($('tr'))
   for (const orderItem of orderListTr) {
     const buyPrice = Number($(orderItem).find($('td')).eq(3)[0].innerText.match(/[\d | .]+/g));// 购入价
+    const buyTime = $(orderItem).find($('.c_Gray.t_Left'))[0].innerText // 购入时间
     const nameCount = $(orderItem).find($('.name-cont'))[0]
     const goodId = nameCount.innerHTML.match(/goods\/\d+/g)[0].split('/')[1]
     if (nameCount.innerText.includes(name)) {
@@ -154,7 +156,6 @@ const getPageListByName = async (name) => {
           }).toFixed(2),// 当前最低售价的平均值
           // buyPrice: buyPrice,// 购入价
         })
-        console.log('列表', goodsClassifyList)
       }
     }
     // console.log('ttt',goodsClassifyList.find(item => item.goodId === goodId).lowestBargainPrice)
@@ -172,6 +173,14 @@ const getPageListByName = async (name) => {
       <td class="t_Left">
         <strong class="f_Strong" style="color: ${getSaleProfits(goodsClassifyList, goodId, buyPrice) > 0  ? 'red' : 'green'}">
             ${getSaleProfits(goodsClassifyList, goodId, buyPrice) ? getSaleProfits(goodsClassifyList, goodId, buyPrice) : '--'}
+        </strong>
+      </td>
+    `)
+
+    $(orderItem).find($('td')).eq(3).after(`
+      <td class="t_Left">
+        <strong class="f_Strong" style="color: ${canSell(buyTime)  ? 'red' : 'green'}">
+            ${canSell(buyTime) ? '是' : '否'}
         </strong>
       </td>
     `)
@@ -196,6 +205,13 @@ const getSaleProfits = (goodsClassifyList, goodId, buyPrice) => {
  */
 const mathCount = (expression) => {
   return Number(math.format(math.evaluate(expression), {precision: 14})).toFixed(2)
+}
+
+/**
+ * 计算7天CD
+ */
+const canSell = (buyDate) => {
+  return !moment(buyDate).add(8, 'days').isAfter(moment())
 }
 
 /**
